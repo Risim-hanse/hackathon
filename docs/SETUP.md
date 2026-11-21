@@ -79,3 +79,24 @@ The frontend works with the API asleep or absent. The current preview does not c
 curl http://localhost:8000/api/health
 .\scripts\check.ps1
 ```
+
+## Functional smoke test
+
+```powershell
+node scripts\smoke.js
+node scripts\smoke.js https://risim-hanse.github.io/hackathon/
+```
+
+The smoke test opens the app in headless Chrome (mobile viewport), checks that
+the page loads, the engine preview renders (score + findings), dose statuses are
+computed, and nothing is blocked (console errors, bad network responses,
+horizontal overflow). It exits non-zero on the first failure.
+
+## Test on a phone
+
+```powershell
+.\scripts\lan-share.ps1
+```
+
+It prints the LAN URL of the production preview (`http://<your-ip>:4173/`) so you
+can open it from another device on the same Wi-Fi.
