@@ -10,6 +10,8 @@ The React app must work with this service completely down.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/health` | deploy/health proof |
+| GET | `/api/scan/status` | is Gemini configured? |
+| POST | `/api/scan` | multipart image → reviewable dosage draft |
 | POST | `/api/profiles/{id}/sync` | upsert profile + append events (idempotent) |
 | GET | `/api/profiles/{id}` | profile + events |
 | GET | `/api/profiles/{id}/export` | JSON export |
@@ -30,6 +32,17 @@ py -m pytest
 ```powershell
 docker build -t meditrack-api .
 docker run -p 8000:8000 -e CORS_ORIGINS="*" meditrack-api
+```
+
+## Gemini document scanning
+
+Set `GEMINI_API_KEY` in the environment (or Render service env vars) to enable
+`POST /api/scan`. Without it the endpoint returns `503` and the UI shows a clear
+message; nothing else changes. The key is never sent to the browser.
+
+```powershell
+$env:GEMINI_API_KEY = 'your-key-here'
+uvicorn app.main:app --reload --port 8000
 ```
 
 ## Render warning

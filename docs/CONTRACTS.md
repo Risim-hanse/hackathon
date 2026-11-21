@@ -23,7 +23,22 @@ Medication {
   doseAmount, doseUnit, foodRelation,
   schedule: { type: 'fixedTimes'|'everyHours'|'asNeeded', times: string[], intervalHours?: number },
   status: 'active'|'paused'|'stopped',
-  prescriberName?, reason?, notes?, startDate?, endDate?, inventory?, drugClass?
+  prescriberName?, reason?, notes?, startDate?, endDate?, inventory?, drugClass?,
+  prescriptionId?, directionsRaw?, durationDays?, quantityDispensed?,
+  refillsAuthorized?, route?, sourceDetail?, confidence?, verification?
+}
+
+DocumentProvenance {
+  imageRef, fileName, mimeType, sha256, scannedAt,
+  kind: 'prescription'|'pharmacy_bill'|'medicine_box'|'discharge_summary'|'other',
+  capturedAt?, ocrText?, thumbnailDataUrl?
+}
+
+Prescription {
+  id, status: 'draft'|'active'|'archived', source: DocumentProvenance,
+  issuedDate?, documentDate?, prescriberName?, prescriberSpecialty?, clinicName?,
+  prescriberPhone?, pharmacyName?, pharmacyPhone?, pharmacyBillDate?, billNumber?,
+  directionsText?, durationDays?, refillsAuthorized?, confidence?, notes?, createdAt
 }
 
 DoseEvent {
@@ -43,7 +58,10 @@ SafetyFinding {
 SafetyReport { score: 0-100, band: 'safe'|'review'|'high_risk', findings, checkedAt }
 AdherenceSummary { totalDoses, taken, late, skipped, missed, adherencePercent, streakDays, mostMissedSlot? }
 Profile { id, name, age?, caregiverName?, caregiverPhone?, pharmacistPhone?, preferences }
-AppState { profile, medications, events, version, updatedAt }
+AppState { profile, medications, prescriptions, events, version, updatedAt }
+ScannedPrescription { issuedDate?, documentDate?, prescriberName?, pharmacyName?, ... confidence?, ocrText?, kind? }
+ScannedMedication { brandName, genericName?, strength?, doseAmount?, times?, scheduleType?, ... }
+ScanResponse { prescription, medications, warnings, model, sha256 }
 ```
 
 ## API contract
@@ -53,8 +71,49 @@ Base URL: `VITE_API_BASE_URL` (empty in local dev; Vite proxies `/api` to `:8000
 ### `GET /api/health`
 
 ```json
-{ "data": { "ok": true, "service": "meditrack-api", "version": "0.1.0" } }
+{ "data": { "ok": true, "service": "meditrack-api", "version": "0.2.0", "geminiConfigured": false } }
 ```
+
+### `GET /api/scan/status`
+
+```json
+{ "data": { "configured": true, "model": "gemini-2.5-flash" } }
+```
+
+### `POST /api/scan` (multipart/form-data)
+
+Request: `file` (image), optional `hints` (text), max 10 MB, PNG/JPEG/WEBP.
+
+Response:
+
+```json
+{
+  "data": {
+    "prescription": {
+      "issuedDate": "2026-11-20",
+      "prescriberName": "Dr Rao",
+      "pharmacyName": "City Pharmacy",
+      "confidence": 0.92,
+      "kind": "prescription",
+      "ocrText": "…"
+    },
+    "medications": [
+      { "brandName": "Dolo 650", "strength": "650mg", "times": ["08:00"], "scheduleType": "fixedTimes" }
+    ],
+    "warnings": ["No prescription date was found. Add it before saving."],
+    "model": "gemini-2.5-flash",
+    "sha256": "…"
+  }
+}
+```
+
+Semantics:
+- Requires `GEMINI_API_KEY` on the API service; otherwise `503`.
+- The model returns a **draft only**. The user confirms/edits every field before it
+  becomes a `Medication` / `Prescription` in local state.
+- The image is uploaded to the API for reading, then stored **only in IndexedDB**
+  on the device (`imageRef`). It is never served from a public URL.
+- `sha256` de-duplicates repeat scans of the same file.
 
 ### `POST /api/profiles/{profileId}/sync`
 
@@ -64,6 +123,7 @@ Request:
 {
   "profile": { "id": "demo-meera", "name": "Meera", "age": 68, "preferences": { "...": "..." } },
   "medications": [{ "id": "med-dolo", "brandName": "Dolo 650", "...": "..." }],
+  "prescriptions": [{ "id": "rx-1", "source": { "...": "..." }, "...": "..." }],
   "events": [{ "id": "evt-1", "doseId": "med-dolo_2026-11-21_08:00", "...": "..." }]
 }
 ```
@@ -94,6 +154,13 @@ Semantics:
 
 ## Conventions
 
+- Storage version is `2`. v1 states are migrated on load by adding `prescriptions: []`.
+- Document images live in IndexedDB via `storage/imageStore.ts`; only `imageRef` and a
+  small `thumbnailDataUrl` are stored in `AppState`.
+- `issuedDate` = date written on the prescription; `documentDate` = printed document/bill
+  date; `pharmacyBillDate` = bill date. Keep them distinct.
+- A scanned medicine starts as `verification: 'draft'` and becomes `'confirmed'` when the
+  user saves it from the review screen.
 - Timestamps: ISO 8601 UTC (`2026-11-21T10:00:00.000Z`).
 - `strength` is display-only (`"650mg"`). `activeIngredients` is the source of truth for mg math.
 - `mgPerUnit` is mg per tablet / capsule / ml. Combination products use multiple entries.

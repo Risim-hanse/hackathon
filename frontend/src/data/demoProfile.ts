@@ -174,6 +174,7 @@ export function createDemoState(now = new Date()): AppState {
   return {
     profile: demoProfile,
     medications: demoMedications,
+    prescriptions: [],
     events: createDemoEvents(now),
     version: STORAGE_VERSION,
     updatedAt: now.toISOString(),

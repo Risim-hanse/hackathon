@@ -5,6 +5,7 @@ import type {
   DoseInstance,
   Medication,
   Preferences,
+  Prescription,
   SkipReason,
 } from '../shared/contracts'
 import { createDemoState } from '../data/demoProfile'
@@ -144,6 +145,27 @@ export function useAppState() {
     setToast({ message: 'Medicine saved.' })
   }, [])
 
+  const addPrescription = useCallback((prescription: Prescription, medications: Medication[]) => {
+    setState((current) => ({
+      ...current,
+      prescriptions: [prescription, ...current.prescriptions],
+      medications: [
+        ...current.medications,
+        ...medications.map((medication) => ({ ...medication, prescriptionId: prescription.id })),
+      ],
+    }))
+    setToast({ message: 'Prescription added to the plan.' })
+  }, [])
+
+  const archivePrescription = useCallback((id: string) => {
+    setState((current) => ({
+      ...current,
+      prescriptions: current.prescriptions.map((item) =>
+        item.id === id ? { ...item, status: 'archived' } : item,
+      ),
+    }))
+  }, [])
+
   const stopMedication = useCallback((id: string) => {
     setState((current) => ({
       ...current,
@@ -186,6 +208,7 @@ export function useAppState() {
 
   return {
     state,
+    prescriptions: state.prescriptions,
     mode,
     setMode,
     now,
@@ -206,6 +229,8 @@ export function useAppState() {
     undo,
     snooze,
     saveMedication,
+    addPrescription,
+    archivePrescription,
     stopMedication,
     setPreference,
     setCaregiver,

@@ -10,9 +10,22 @@ export function loadState(): AppState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as AppState
-    if (parsed.version !== STORAGE_VERSION) return null
-    return parsed
+    const parsed = JSON.parse(raw) as Partial<AppState>
+    if (parsed.version === STORAGE_VERSION) {
+      return {
+        ...(parsed as AppState),
+        prescriptions: parsed.prescriptions ?? [],
+      }
+    }
+    // v1 -> v2: scanned prescriptions were introduced in v2.
+    if (parsed.version === 1) {
+      return {
+        ...(parsed as Omit<AppState, 'prescriptions' | 'version'>),
+        prescriptions: [],
+        version: STORAGE_VERSION,
+      } as AppState
+    }
+    return null
   } catch {
     return null
   }

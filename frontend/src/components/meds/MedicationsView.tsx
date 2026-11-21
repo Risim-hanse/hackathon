@@ -1,10 +1,24 @@
 import { useState } from 'react'
-import { CalendarClock, Pencil, Pill, Plus, Square, Utensils } from 'lucide-react'
+import {
+  Building2,
+  CalendarClock,
+  Camera,
+  FileText,
+  Pencil,
+  Pill,
+  Plus,
+  ScanLine,
+  Square,
+  Stethoscope,
+  Utensils,
+} from 'lucide-react'
 import type { FoodRelation, Medication, MedicationForm as MedFormType, ScheduleType } from '../../shared/contracts'
 import { resolveBrand } from '../../engine'
+import { getImageUrl } from '../../storage/imageStore'
 import { Badge, Button, Card, Meter, Modal } from '../primitives/Ui'
 import { FOOD_LABEL, daysLeftLabel } from '../../utils/format'
 import type { AppStateApi } from '../../hooks/useAppState'
+import { ScanPrescriptionModal } from './ScanPrescriptionModal'
 
 const FOOD_OPTIONS = Object.keys(FOOD_LABEL) as FoodRelation[]
 
@@ -45,8 +59,9 @@ function formFrom(medication: Medication) {
 }
 
 export function MedicationsView({ api }: { api: AppStateApi }) {
-  const { state, saveMedication, stopMedication, refills } = api
+  const { state, saveMedication, stopMedication, refills, prescriptions, mode, archivePrescription } = api
   const [open, setOpen] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
   const [form, setForm] = useState(blankForm)
 
   const brandEntry = form.brandName.trim() ? resolveBrand(form.brandName) : null
@@ -117,10 +132,122 @@ export function MedicationsView({ api }: { api: AppStateApi }) {
           <h1 className="mt-1 text-3xl font-black">Medicines</h1>
           <p className="muted mt-1 text-base">{state.medications.length} medicines on record.</p>
         </div>
-        <Button onClick={openNew}>
-          <Plus size={20} /> Add medicine
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setScanOpen(true)}>
+            <ScanLine size={20} /> Scan prescription
+          </Button>
+          <Button onClick={openNew}>
+            <Plus size={20} /> Add medicine
+          </Button>
+        </div>
       </div>
+
+      <Card>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-black">Prescriptions & sources</h2>
+            <p className="muted text-sm">
+              {mode === 'caregiver'
+                ? 'Every linked document, with its date, source image, doctor and pharmacy.'
+                : 'Where each medicine came from.'}
+            </p>
+          </div>
+          <Badge tone="info">{prescriptions.length} documents</Badge>
+        </div>
+
+        {prescriptions.length === 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--surface-2)] p-4">
+            <FileText size={26} style={{ color: 'var(--accent)' }} />
+            <p className="flex-1 text-sm">
+              No source documents yet. Scan a prescription to keep the photo, date, doctor,
+              pharmacy, and extracted schedule together.
+            </p>
+            <Button size="sm" variant="secondary" onClick={() => setScanOpen(true)}>
+              <ScanLine size={16} /> Scan now
+            </Button>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {prescriptions.map((prescription) => {
+              const linked = state.medications.filter(
+                (medication) => medication.prescriptionId === prescription.id,
+              ).length
+              return (
+                <li
+                  key={prescription.id}
+                  className="flex flex-wrap items-start gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3"
+                >
+                  <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                    {prescription.source.thumbnailDataUrl ? (
+                      <img src={prescription.source.thumbnailDataUrl} alt={prescription.source.fileName} className="h-full w-full object-cover" />
+                    ) : (
+                      <Camera size={26} className="muted" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black capitalize">
+                        {prescription.source.kind.replace('_', ' ')}
+                      </h3>
+                      <Badge tone={prescription.status === 'active' ? 'info' : 'neutral'}>
+                        {prescription.status}
+                      </Badge>
+                      {prescription.confidence !== undefined && (
+                        <Badge tone="neutral">{Math.round(prescription.confidence * 100)}% read</Badge>
+                      )}
+                    </div>
+                    <div className="muted mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      {prescription.issuedDate && <span>Prescribed: {prescription.issuedDate}</span>}
+                      {prescription.documentDate && <span>Document: {prescription.documentDate}</span>}
+                      {prescription.pharmacyBillDate && <span>Bill date: {prescription.pharmacyBillDate}</span>}
+                      {prescription.billNumber && <span>Bill #{prescription.billNumber}</span>}
+                      <span>Scanned: {new Date(prescription.source.scannedAt).toLocaleString()}</span>
+                      <span>{linked} medicine{linked === 1 ? '' : 's'} linked</span>
+                    </div>
+                    {mode === 'caregiver' && (
+                      <div className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+                        {prescription.prescriberName && (
+                          <span className="flex items-center gap-2">
+                            <Stethoscope size={16} /> {prescription.prescriberName}
+                            {prescription.clinicName ? ` · ${prescription.clinicName}` : ''}
+                          </span>
+                        )}
+                        {prescription.pharmacyName && (
+                          <span className="flex items-center gap-2">
+                            <Building2 size={16} /> {prescription.pharmacyName}
+                            {prescription.pharmacyPhone ? ` · ${prescription.pharmacyPhone}` : ''}
+                          </span>
+                        )}
+                        {prescription.directionsText && (
+                          <span className="sm:col-span-2">“{prescription.directionsText}”</span>
+                        )}
+                        <span className="muted sm:col-span-2">File: {prescription.source.fileName} · SHA-256 {prescription.source.sha256.slice(0, 12)}…</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={async () => {
+                        const url = await getImageUrl(prescription.source.imageRef)
+                        if (url) window.open(url, '_blank', 'noopener')
+                      }}
+                    >
+                      <Camera size={16} /> View image
+                    </Button>
+                    {prescription.status === 'active' && (
+                      <Button size="sm" variant="ghost" onClick={() => archivePrescription(prescription.id)}>
+                        Archive
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {state.medications.map((medication) => {
@@ -252,6 +379,8 @@ export function MedicationsView({ api }: { api: AppStateApi }) {
           <Button onClick={save} disabled={!form.brandName.trim()}>Save medicine</Button>
         </div>
       </Modal>
+
+      <ScanPrescriptionModal api={api} open={scanOpen} onClose={() => setScanOpen(false)} />
     </div>
   )
 }

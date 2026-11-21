@@ -1,17 +1,68 @@
+import asyncio
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from .db import get_connection
-from .schemas import SyncRequest, SyncResponse
+from .scan import payload_for_client, scan_document
+from .schemas import ScanStatus, SyncRequest, SyncResponse
+from .settings import GEMINI_API_KEY, GEMINI_MODEL, MAX_SCAN_BYTES
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/health")
 def health() -> dict:
-    return {"data": {"ok": True, "service": "meditrack-api", "version": "0.1.0"}}
+    return {
+        "data": {
+            "ok": True,
+            "service": "meditrack-api",
+            "version": "0.2.0",
+            "geminiConfigured": bool(GEMINI_API_KEY),
+        }
+    }
+
+
+@router.get("/scan/status")
+def scan_status() -> dict:
+    return {
+        "data": ScanStatus(configured=bool(GEMINI_API_KEY), model=GEMINI_MODEL).model_dump()
+    }
+
+
+@router.post("/scan")
+async def scan_document_endpoint(
+    file: UploadFile = File(...),
+    hints: str = Form(""),
+) -> dict:
+    """Read a prescription image and return a reviewable medication draft."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini scanning is not configured. Add GEMINI_API_KEY to the API service.",
+        )
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Upload a PNG, JPEG, or WEBP image.")
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="The image is empty.")
+    if len(image_bytes) > MAX_SCAN_BYTES:
+        raise HTTPException(status_code=413, detail="The image is too large (10 MB limit).")
+
+    try:
+        result = await asyncio.to_thread(
+            scan_document,
+            image_bytes,
+            content_type,
+            file.filename or "prescription",
+            hints,
+        )
+    except Exception as exc:  # noqa: BLE001 - surface a safe message to the UI
+        raise HTTPException(status_code=502, detail=f"Scanning failed: {exc}") from exc
+
+    return {"data": payload_for_client(result)}
 
 
 @router.post("/profiles/{profile_id}/sync")
@@ -43,6 +94,19 @@ def sync_profile(profile_id: str, payload: SyncRequest) -> dict:
                 VALUES (?, ?, ?, ?)
                 """,
                 (event_id, profile_id, json.dumps(event), now),
+            )
+
+        # Documents are also append-only snapshots of the scanned metadata.
+        for document in payload.prescriptions:
+            document_id = document.get("id")
+            if not document_id:
+                continue
+            connection.execute(
+                """
+                INSERT OR REPLACE INTO prescriptions (id, profile_id, payload, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (document_id, profile_id, json.dumps(document), now),
             )
 
     return {"data": SyncResponse(ok=True, syncedAt=now).model_dump()}

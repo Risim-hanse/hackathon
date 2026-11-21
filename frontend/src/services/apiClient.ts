@@ -1,4 +1,4 @@
-import type { ApiEnvelope, AppState, SyncResponse } from '../shared/contracts'
+import type { ApiEnvelope, AppState, ScanResponse, SyncResponse } from '../shared/contracts'
 
 /**
  * The ONLY module that talks to the backend.
@@ -33,7 +33,33 @@ export async function syncState(state: AppState): Promise<SyncResponse | null> {
     body: JSON.stringify({
       profile: state.profile,
       medications: state.medications,
+      prescriptions: state.prescriptions,
       events: state.events,
     }),
   })
+}
+
+/** Best-effort Gemini scan. Returns null when the key/API is unavailable. */
+export async function scanPrescription(
+  file: File,
+  hints = '',
+): Promise<{ data: ScanResponse | null; error?: string }> {
+  try {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('hints', hints)
+    const response = await fetch(`${BASE_URL}/api/scan`, { method: 'POST', body: form })
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { detail?: string }
+      return { data: null, error: body.detail ?? `Scan failed (${response.status})` }
+    }
+    const body = (await response.json()) as ApiEnvelope<ScanResponse>
+    return { data: body.data }
+  } catch {
+    return { data: null, error: 'Scanning service is offline.' }
+  }
+}
+
+export async function getScanStatus(): Promise<{ configured: boolean; model: string } | null> {
+  return request<{ configured: boolean; model: string }>('/api/scan/status')
 }

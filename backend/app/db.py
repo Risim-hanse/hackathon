@@ -17,8 +17,18 @@ CREATE TABLE IF NOT EXISTS dose_events (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS prescriptions (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_dose_events_profile
     ON dose_events(profile_id);
+
+CREATE INDEX IF NOT EXISTS idx_prescriptions_profile
+    ON prescriptions(profile_id);
 """
 
 

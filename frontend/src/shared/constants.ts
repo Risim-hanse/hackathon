@@ -1,7 +1,7 @@
 export const APP_NAME = 'MediTrack SafetyNet'
 
 export const STORAGE_KEY = 'meditrack.safetynet.v1'
-export const STORAGE_VERSION = 1
+export const STORAGE_VERSION = 2
 
 /** Defaults from SafetyNet.md. Overridable per profile. */
 export const DEFAULT_GRACE = {

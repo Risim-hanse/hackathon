@@ -41,6 +41,62 @@ export interface InventoryInfo {
   refillThresholdDays: number
 }
 
+/** What kind of document the uploaded image shows. */
+export type PrescriptionSourceKind =
+  | 'prescription'
+  | 'pharmacy_bill'
+  | 'medicine_box'
+  | 'discharge_summary'
+  | 'other'
+
+/**
+ * Provenance for a scanned document. The image itself lives in IndexedDB;
+ * only this reference is stored in the versioned app state.
+ */
+export interface DocumentProvenance {
+  /** IndexedDB key for the original image — never a public URL. */
+  imageRef: string
+  fileName: string
+  mimeType: string
+  /** SHA-256 of the original bytes, used to de-duplicate repeat scans. */
+  sha256: string
+  /** When the photo/file was captured, when the file provides it. */
+  capturedAt?: string
+  /** When we imported/scanned it (ISO). */
+  scannedAt: string
+  kind: PrescriptionSourceKind
+  /** Verbatim text the scanner read, kept for audit and correction. */
+  ocrText?: string
+  thumbnailDataUrl?: string
+}
+
+/** A prescription or bill, with the details a caregiver needs to hand over. */
+export interface Prescription {
+  id: string
+  status: 'draft' | 'active' | 'archived'
+  /** Date written on the prescription (YYYY-MM-DD when known). */
+  issuedDate?: string
+  /** Date printed on the document/bill, if different from issuedDate. */
+  documentDate?: string
+  prescriberName?: string
+  prescriberSpecialty?: string
+  clinicName?: string
+  prescriberPhone?: string
+  pharmacyName?: string
+  pharmacyPhone?: string
+  pharmacyBillDate?: string
+  billNumber?: string
+  /** Free-text header such as "Take after food for 5 days". */
+  directionsText?: string
+  durationDays?: number
+  refillsAuthorized?: number
+  source: DocumentProvenance
+  /** 0-1 confidence from the scanner. */
+  confidence?: number
+  notes?: string
+  createdAt: string
+}
+
 /**
  * Structured per-ingredient strength. Required for ceiling math on combination
  * products (e.g. Combiflam = ibuprofen 400 + paracetamol 325).
@@ -76,6 +132,21 @@ export interface Medication {
   endDate?: string
   inventory?: InventoryInfo
   drugClass?: string
+  /** Links this medicine to the scanned prescription it came from. */
+  prescriptionId?: string
+  /** Verbatim line from the document, e.g. "1-0-1 × 5 days after food". */
+  directionsRaw?: string
+  /** Planned course length in days, when stated. */
+  durationDays?: number
+  quantityDispensed?: number
+  refillsAuthorized?: number
+  /** Oral, topical, eye drops, inhaled… defaults to the medication form. */
+  route?: string
+  /** Provenance inside the document, e.g. "line 3 of the prescription". */
+  sourceDetail?: string
+  /** 0-1 confidence from the scanner. */
+  confidence?: number
+  verification?: 'draft' | 'confirmed' | 'edited'
 }
 
 export type DoseStatus = 'scheduled' | 'taken' | 'late' | 'skipped' | 'missed'
@@ -192,6 +263,8 @@ export interface Profile {
 export interface AppState {
   profile: Profile
   medications: Medication[]
+  /** Scanned prescriptions and their provenance (new in v2). */
+  prescriptions: Prescription[]
   events: DoseEvent[]
   version: number
   updatedAt: string
@@ -268,4 +341,56 @@ export interface SyncRequest {
 export interface SyncResponse {
   ok: boolean
   syncedAt: string
+}
+
+/* -------------------------- Gemini document scan ------------------------- */
+
+/** Gemini's read of the document header. The client adds provenance and ids. */
+export interface ScannedPrescription {
+  issuedDate?: string
+  documentDate?: string
+  prescriberName?: string
+  prescriberSpecialty?: string
+  clinicName?: string
+  prescriberPhone?: string
+  pharmacyName?: string
+  pharmacyPhone?: string
+  pharmacyBillDate?: string
+  billNumber?: string
+  directionsText?: string
+  durationDays?: number
+  refillsAuthorized?: number
+  confidence?: number
+  ocrText?: string
+  kind?: PrescriptionSourceKind
+}
+
+/** A medicine draft the user must confirm before it enters the plan. */
+export interface ScannedMedication {
+  brandName: string
+  genericName?: string
+  strength?: string
+  doseAmount?: number
+  doseUnit?: string
+  form?: MedicationForm
+  foodRelation?: FoodRelation
+  scheduleType?: ScheduleType
+  times?: string[]
+  intervalHours?: number
+  durationDays?: number
+  quantityDispensed?: number
+  refillsAuthorized?: number
+  reason?: string
+  directionsRaw?: string
+  sourceDetail?: string
+  confidence?: number
+}
+
+export interface ScanResponse {
+  prescription: ScannedPrescription
+  medications: ScannedMedication[]
+  /** Things the scanner could not read and the user must check. */
+  warnings: string[]
+  model: string
+  sha256: string
 }
