@@ -51,8 +51,8 @@ def payload(profile_id: str) -> dict:
         ],
         "events": [
             {
-                "id": "evt-1",
-                "doseId": "med-1_2026-11-21_08:00",
+                "id": f"evt-{profile_id}-1",
+                "doseId": f"med-1_2026-11-21_08:00_{profile_id}",
                 "medicationId": "med-1",
                 "scheduledFor": "2026-11-21T08:00:00.000Z",
                 "actionAt": "2026-11-21T08:05:00.000Z",
