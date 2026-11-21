@@ -23,5 +23,6 @@ venv/
 # os / editor
 .DS_Store
 Thumbs.db
-.idea/
-.vscode/
+# local-only project notes (kept on disk, not shipped to the repo)
+*.md
+!README.md
