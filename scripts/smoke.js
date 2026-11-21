@@ -151,19 +151,29 @@ async function main() {
   await Promise.race([load, new Promise((resolve) => setTimeout(resolve, 8000))])
   await new Promise((resolve) => setTimeout(resolve, 1500))
 
-  const state = (await send('Runtime.evaluate', {
-    expression: `JSON.stringify({
-      title: document.title,
-      innerWidth: window.innerWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-      headings: [...document.querySelectorAll('main section h2')].map((h) => h.textContent.trim()),
-      findingTitles: [...document.querySelectorAll('main section h3')].map((h) => h.textContent.trim()),
-      statuses: [...document.querySelectorAll('[aria-hidden="true"]')].map((el) => el.textContent).filter(Boolean),
-      heroScore: (document.querySelector('[class*="text-6xl"]')?.textContent || '').trim(),
-      doseTexts: [...document.querySelectorAll('main')].length,
-    })`,
-    returnByValue: true,
-  })).result.result.value
+  const getState = async (expression) =>
+    JSON.parse((await send('Runtime.evaluate', { expression, returnByValue: true })).result.result.value)
+
+  const todayState = await getState(`JSON.stringify({
+    title: document.title,
+    innerWidth: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    headings: [...document.querySelectorAll('main h1, main h2')].map((h) => h.textContent.trim()),
+    doseRows: document.querySelectorAll('[data-testid="dose-row"]').length,
+    modeButtons: [...document.querySelectorAll('button')].filter((b) => ['Elderly', 'Caregiver'].includes(b.textContent.trim())).length,
+    heroText: document.querySelector('.hero')?.textContent || '',
+  })`)
+
+  await send('Runtime.evaluate', {
+    expression: `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Safety')?.click()`,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 600))
+
+  const safetyState = await getState(`JSON.stringify({
+    score: (document.querySelector('[data-testid="safety-score"]')?.textContent || '').trim(),
+    findings: document.querySelectorAll('[data-testid="finding-card"]').length,
+    headings: [...document.querySelectorAll('main h1')].map((h) => h.textContent.trim()),
+  })`)
 
   ws.close()
   await new Promise((resolve) => {
@@ -180,17 +190,22 @@ async function main() {
     }
   }
 
-  const parsed = JSON.parse(state)
+  const parsed = {
+    ...todayState,
+    heroScore: safetyState.score,
+    findings: safetyState.findings,
+    safetyHeading: safetyState.headings,
+  }
   const checks = [
     ['Page loads with a title', Boolean(parsed.title)],
     ['Title mentions MediTrack SafetyNet', parsed.title.includes('MediTrack SafetyNet')],
     ['No horizontal overflow (scrollWidth <= innerWidth)', parsed.scrollWidth <= parsed.innerWidth + 1],
-    ['"Today’s medicines" heading', parsed.headings.some((h) => /today.*medicines/i.test(h))],
-    ['"Regimen check" heading', parsed.headings.includes('Regimen check')],
-    ['"What the safety engine found" heading', parsed.headings.includes('What the safety engine found')],
-    ['Hero score parsed as 0-100', /^\d{1,3}$/.test(parsed.heroScore) && Number(parsed.heroScore) <= 100],
-    ['At least one safety finding renders', parsed.findingTitles.length > 0],
-    ['At least one dose status is computed', parsed.statuses.length > 0],
+    ['Today schedule renders', parsed.headings.some((h) => /today/i.test(h))],
+    ['Safety view opens', parsed.safetyHeading.some((h) => /regimen at a glance/i.test(h))],
+    ['Safety score parsed as 0-100', /^\d{1,3}$/.test(parsed.heroScore) && Number(parsed.heroScore) <= 100],
+    ['At least one safety finding renders', parsed.findings > 0],
+    ['Dose rows are computed', parsed.doseRows > 0],
+    ['Two modes are available', parsed.modeButtons >= 2],
     ['No console errors', consoleErrors.length === 0],
     ['No bad network responses', badResponses.length === 0],
     ['No JS exceptions', pageErrors.length === 0],
@@ -200,9 +215,10 @@ async function main() {
   console.log(`\nSmoke test: ${URL_TO_TEST}`)
   console.log('  Title:', JSON.stringify(parsed.title))
   console.log('  Viewport:', `${parsed.innerWidth}px, scroll ${parsed.scrollWidth}px`)
-  console.log('  Hero score:', parsed.heroScore)
-  console.log('  Findings:', parsed.findingTitles.length)
-  console.log('  Dose statuses:', parsed.statuses.join(', ') || '(none)')
+  console.log('  Safety score:', parsed.heroScore)
+  console.log('  Findings:', parsed.findings)
+  console.log('  Dose rows:', parsed.doseRows)
+  console.log('  Mode buttons:', parsed.modeButtons)
   console.log('')
   for (const [name, ok] of checks) {
     if (!ok) failed += 1
