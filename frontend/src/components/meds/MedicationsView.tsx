@@ -217,7 +217,11 @@ export function MedicationsView({
           .includes(normalizedQuery),
   )
 
-  const sourceGroups = prescriptions
+  const sourceGroups: Array<{
+    id: string
+    prescription: Prescription | null
+    medications: Medication[]
+  }> = prescriptions
     .map((prescription) => ({
       id: prescription.id,
       prescription,
