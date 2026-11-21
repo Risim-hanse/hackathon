@@ -40,29 +40,21 @@ MediTrack SafetyNet solves PS02 by integrating deterministic client-side pharmac
 
 ## 3. System Architecture & Component Topology
 
-```
-┌──────────────────────────────────────── Client Runtime (Browser React SPA) ────────────────────────────────────────┐
-│                                                                                                                     │
-│   Layer 4: UI Components (components/{today, meds, safety, adherence, caregiver, layout})                          │
-│          │                                                                                                          │
-│   Layer 3: State Coordination Hooks (hooks/useAppState.ts)                                                         │
-│          │                                                                                                          │
-│   Layer 2: Pure Clinical & Scheduling Engine (engine/{scheduler, safety, score, adherence, refill, brands}.ts)     │
-│          │                                                                                                          │
-│   Layer 1: Clinical Knowledge Packs (data/{brands, interactions, beers, missedDose}.json)                           │
-│          │                                                                                                          │
-│   Layer 0: Immutable Domain Contracts (shared/contracts.ts)                                                         │
-│                                                                                                                     │
-│   Storage Subsystem: storage/{localStore, imageStore}.ts (Client-side source of truth via LocalStorage and IDB)      │
-└──────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────┘
-                                                           │ HTTPS (Optional Mirror)
-                                              ┌────────────▼────────────┐
-                                              │ FastAPI + SQLite Engine │
-                                              │ - POST /api/scan (OCR)  │
-                                              │ - POST /api/sync        │
-                                              │ - GET  /api/health      │
-                                              └─────────────────────────┘
-```
+The platform is structured into two decoupled tiers:
+
+### 3.1 Client Tier (Browser React Progressive Web Application)
+* Layer 4 (UI Components): Interactive user interfaces located in `components/{today, meds, safety, adherence, caregiver, layout}`.
+* Layer 3 (State Coordination): React hooks managing reactive state, temporal schedules, and storage synchronization in `hooks/useAppState.ts`.
+* Layer 2 (Clinical and Scheduling Engine): Pure deterministic algorithms in `engine/{scheduler, safety, score, adherence, refill, brands}.ts`.
+* Layer 1 (Clinical Knowledge Packs): Static clinical reference tables in `data/{brands, interactions, beers, missedDose}.json`.
+* Layer 0 (Domain Contracts): Rigid TypeScript interfaces and domain schemas in `shared/contracts.ts`.
+* Persistence Subsystem: Client-side primary persistence via LocalStorage and IndexedDB in `storage/{localStore, imageStore}.ts`.
+
+### 3.2 Backend Tier (Optional Persistence and Extraction Mirror)
+* Service Engine: Containerized FastAPI service running Python 3.12 with SQLite storage.
+* Document Optical Character Recognition: Endpoint `POST /api/scan` proxies multimodal payloads to Google Gemini models.
+* Profile and Audit Synchronization: Endpoint `POST /api/sync` provides idempotent storage backups without blocking client execution.
+* Operational Verification: Endpoint `GET /api/health` reports runtime service status.
 
 ### 3.1 Strict Layer Dependency Constraints
 The repository enforces a strict, unidirectional import policy. Violations of this hierarchy will fail automated verification:
