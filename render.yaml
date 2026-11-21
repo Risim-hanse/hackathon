@@ -20,6 +20,11 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    envVars:
+      # Must be the API's onrender.com URL, set AFTER the API service exists.
+      # Leave blank if you don't need scanning on the deployed site.
+      - key: VITE_API_BASE_URL
+        sync: false
 
   - type: web
     name: meditrack-api
