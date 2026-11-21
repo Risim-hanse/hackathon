@@ -35,7 +35,9 @@ Rules:
   'asNeeded' only when the document says 'as needed' / 'SOS' / 'when required'.
 - foodRelation: use 'before_meal', 'with_meal', 'after_meal', 'empty_stomach', 'bedtime', or 'anytime'.
 - durationDays / quantityDispensed / refillsAuthorized: only when explicitly printed.
-- Document dates: 'issuedDate' is the prescription date written by the doctor;
+- Dates: always return YYYY-MM-DD. Convert printed DD/MM/YYYY dates, e.g.
+  "20/11/2026" -> "2026-11-20".
+- 'issuedDate' is the prescription date written by the doctor;
   'documentDate' is a bill or report date if different; 'pharmacyBillDate' is on a bill.
 - 'ocrText' should be a short verbatim transcript of the relevant lines, not a summary.
 - 'kind' should be one of: prescription, pharmacy_bill, medicine_box, discharge_summary, other.
@@ -45,6 +47,19 @@ Rules:
 """
 
 FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
+DD_MM_YYYY = re.compile(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$")
+
+
+def _iso_date(value: str | None) -> str | None:
+    if not value:
+        return value
+    match = DD_MM_YYYY.match(value.strip())
+    if not match:
+        return value
+    day, month, year = (int(part) for part in match.groups())
+    if 1 <= day <= 31 and 1 <= month <= 12:
+        return f"{year:04d}-{month:02d}-{day:02d}"
+    return value
 
 
 def _unwrap(raw: str) -> str:
@@ -78,6 +93,11 @@ def scan_document(
         config=config,
     )
     result = ScanResponse.model_validate_json(_unwrap(response.text or "{}"))
+
+    # The model sometimes echoes the printed DD/MM/YYYY form; normalise it.
+    result.prescription.issuedDate = _iso_date(result.prescription.issuedDate)
+    result.prescription.documentDate = _iso_date(result.prescription.documentDate)
+    result.prescription.pharmacyBillDate = _iso_date(result.prescription.pharmacyBillDate)
 
     if not result.medications:
         result.warnings.append("No medicines could be read. Check the photo and try again.")

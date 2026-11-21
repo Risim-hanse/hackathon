@@ -6,5 +6,5 @@ CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").spli
 
 # Gemini is optional: the app stays fully functional without a key.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 MAX_SCAN_BYTES = int(os.getenv("MAX_SCAN_BYTES", str(10 * 1024 * 1024)))

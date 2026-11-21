@@ -85,7 +85,7 @@ curl http://localhost:8000/api/health
 Add `GEMINI_API_KEY` to the API service environment (Render: Blueprint prompt, or
 dashboard). Without it, `/api/scan/status` reports `configured: false`, the scan
 button is disabled, and the UI explains what to do. The key is never sent to the
-browser. Model defaults to `gemini-2.5-flash` (`GEMINI_MODEL` overrides it).
+browser. Model defaults to `gemini-flash-lite-latest` (`GEMINI_MODEL` overrides it).
 
 ## Functional smoke test
 

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 import app.routes as routes
 from app.main import app
 from app.schemas import ScanResponse, ScannedMedication, ScannedPrescription
+from app.scan import _iso_date
 
 client = TestClient(app)
 
@@ -12,6 +13,12 @@ client = TestClient(app)
 PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/AF+7QAAAABJRU5ErkJggg=="
 )
+
+
+def test_printed_dates_are_normalised():
+    assert _iso_date("20/11/2026") == "2026-11-20"
+    assert _iso_date("2026-11-20") == "2026-11-20"
+    assert _iso_date(None) is None
 
 
 def test_scan_status_reports_configuration(monkeypatch):
