@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "note": "Curated subset of the AGS Beers Criteria (2023) for the demo. Not a complete review.",
+    "updated": "2026-11-21"
+  },
+  "rules": [
+    {
+      "id": "beers-benzodiazepine",
+      "generics": ["alprazolam", "clonazepam", "lorazepam", "diazepam"],
+      "minAge": 65,
+      "severity": "major",
+      "title": "Benzodiazepine in an older adult",
+      "plainLanguage": "This sleeping or anxiety medicine can increase confusion, falls, and fractures in people aged 65 and over.",
+      "action": "Ask your doctor whether a safer option is possible. Do not stop it suddenly on your own.",
+      "source": "AGS Beers Criteria 2023"
+    },
+    {
+      "id": "beers-nsaid",
+      "generics": ["ibuprofen", "diclofenac", "naproxen"],
+      "minAge": 65,
+      "severity": "moderate",
+      "title": "Regular NSAID use in an older adult",
+      "plainLanguage": "Regular use of this pain reliever can increase the risk of stomach bleeding, kidney problems, and raised blood pressure in older adults.",
+      "action": "Ask your doctor about the lowest effective dose and whether a safer alternative fits.",
+      "source": "AGS Beers Criteria 2023"
+    },
+    {
+      "id": "beers-antihistamine",
+      "generics": ["diphenhydramine", "chlorpheniramine", "pheniramine"],
+      "minAge": 65,
+      "severity": "moderate",
+      "title": "First-generation antihistamine in an older adult",
+      "plainLanguage": "This allergy medicine can cause drowsiness, confusion, dry mouth, and urinary retention in older adults.",
+      "action": "Ask your pharmacist about a non-sedating alternative.",
+      "source": "AGS Beers Criteria 2023"
+    }
+  ]
+}

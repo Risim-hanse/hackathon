@@ -1,0 +1,10 @@
+{
+  "name": "MediTrack SafetyNet",
+  "short_name": "SafetyNet",
+  "description": "An accessible medication safety net for elderly users and their caregivers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": []
+}

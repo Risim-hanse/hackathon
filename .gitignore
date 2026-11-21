@@ -1,0 +1,27 @@
+# dependencies / builds
+node_modules/
+dist/
+.vite/
+coverage/
+
+# env
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# data
+*.db
+*.sqlite3
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

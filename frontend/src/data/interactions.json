@@ -1,0 +1,53 @@
+{
+  "_meta": {
+    "note": "Curated high-confidence interaction subset for the demo. Not a complete interaction checker.",
+    "updated": "2026-11-21"
+  },
+  "pairs": [
+    {
+      "a": "warfarin",
+      "b": "aspirin",
+      "severity": "major",
+      "title": "Warfarin + Aspirin",
+      "mechanism": "Both reduce clotting ability; together they markedly increase the risk of gastrointestinal and other bleeding.",
+      "action": "Contact your prescriber before taking these together. Watch for bruising, black stools, or unusual bleeding.",
+      "source": "FDA warfarin labeling; NHS medicines information"
+    },
+    {
+      "a": "warfarin",
+      "b": "ibuprofen",
+      "severity": "major",
+      "title": "Warfarin + Ibuprofen",
+      "mechanism": "NSAIDs inhibit platelet function and irritate the stomach lining, adding to warfarin's bleeding risk.",
+      "action": "Avoid combining unless your prescriber has specifically approved it. Ask about a safer pain reliever.",
+      "source": "FDA warfarin labeling"
+    },
+    {
+      "a": "aspirin",
+      "b": "ibuprofen",
+      "severity": "moderate",
+      "title": "Aspirin + Ibuprofen",
+      "mechanism": "Ibuprofen can interfere with aspirin's antiplatelet effect and increase stomach irritation.",
+      "action": "Discuss timing and alternatives with your pharmacist.",
+      "source": "FDA drug safety communication"
+    },
+    {
+      "a": "ciprofloxacin",
+      "b": "calcium carbonate",
+      "severity": "moderate",
+      "title": "Ciprofloxacin + Calcium",
+      "mechanism": "Calcium can bind ciprofloxacin in the gut and reduce how much antibiotic is absorbed.",
+      "action": "Separate doses by at least 2 hours; confirm timing with your pharmacist.",
+      "source": "FDA ciprofloxacin labeling"
+    },
+    {
+      "a": "tetracycline",
+      "b": "calcium carbonate",
+      "severity": "moderate",
+      "title": "Tetracycline + Calcium",
+      "mechanism": "Calcium chelates tetracycline and lowers antibiotic absorption.",
+      "action": "Separate doses by at least 2 hours; confirm with your pharmacist.",
+      "source": "FDA tetracycline labeling"
+    }
+  ]
+}

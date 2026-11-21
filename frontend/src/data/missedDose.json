@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "note": "General rescue guidance for the demo. Always route uncertain cases to a pharmacist or prescriber.",
+    "updated": "2026-11-21"
+  },
+  "default": "If you miss a dose, take it when you remember unless it is almost time for the next dose. Never double up. Call your pharmacist if you are unsure.",
+  "rules": [
+    {
+      "drugClasses": ["statin"],
+      "guidance": "Take it as soon as you remember unless the next dose is due soon. Do not double up.",
+      "source": "NHS medicines information"
+    },
+    {
+      "drugClasses": ["antihypertensive"],
+      "guidance": "Take it as soon as you remember unless the next dose is due soon. Do not double up. If you feel dizzy, sit down and call your doctor.",
+      "source": "NHS medicines information"
+    },
+    {
+      "drugClasses": ["antibiotic"],
+      "guidance": "Take it as soon as you remember, then continue the schedule. Do not skip doses. Finish the full course.",
+      "source": "NHS antibiotics guidance"
+    },
+    {
+      "drugClasses": ["anticoagulant"],
+      "guidance": "Contact your prescriber or anticoagulation clinic for instructions. Do not double up.",
+      "source": "NHS warfarin guidance"
+    }
+  ]
+}
