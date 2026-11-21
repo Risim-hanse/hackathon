@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Building2,
   CalendarClock,
@@ -18,7 +18,6 @@ import { getImageUrl } from '../../storage/imageStore'
 import { Badge, Button, Card, Meter, Modal } from '../primitives/Ui'
 import { FOOD_LABEL, daysLeftLabel } from '../../utils/format'
 import type { AppStateApi } from '../../hooks/useAppState'
-import { ScanPrescriptionModal } from './ScanPrescriptionModal'
 
 const FOOD_OPTIONS = Object.keys(FOOD_LABEL) as FoodRelation[]
 
@@ -58,11 +57,25 @@ function formFrom(medication: Medication) {
   }
 }
 
-export function MedicationsView({ api }: { api: AppStateApi }) {
+export function MedicationsView({
+  api,
+  onScan,
+  addIntent = 0,
+}: {
+  api: AppStateApi
+  onScan: () => void
+  addIntent?: number
+}) {
   const { state, saveMedication, stopMedication, refills, prescriptions, mode, archivePrescription } = api
   const [open, setOpen] = useState(false)
-  const [scanOpen, setScanOpen] = useState(false)
   const [form, setForm] = useState(blankForm)
+
+  useEffect(() => {
+    if (addIntent > 0) {
+      setForm(blankForm())
+      setOpen(true)
+    }
+  }, [addIntent])
 
   const brandEntry = form.brandName.trim() ? resolveBrand(form.brandName) : null
 
@@ -133,7 +146,7 @@ export function MedicationsView({ api }: { api: AppStateApi }) {
           <p className="muted mt-1 text-base">{state.medications.length} medicines on record.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setScanOpen(true)}>
+          <Button variant="secondary" onClick={onScan}>
             <ScanLine size={20} /> Scan prescription
           </Button>
           <Button onClick={openNew}>
@@ -162,7 +175,7 @@ export function MedicationsView({ api }: { api: AppStateApi }) {
               No source documents yet. Scan a prescription to keep the photo, date, doctor,
               pharmacy, and extracted schedule together.
             </p>
-            <Button size="sm" variant="secondary" onClick={() => setScanOpen(true)}>
+            <Button size="sm" variant="secondary" onClick={onScan}>
               <ScanLine size={16} /> Scan now
             </Button>
           </div>
@@ -379,8 +392,6 @@ export function MedicationsView({ api }: { api: AppStateApi }) {
           <Button onClick={save} disabled={!form.brandName.trim()}>Save medicine</Button>
         </div>
       </Modal>
-
-      <ScanPrescriptionModal api={api} open={scanOpen} onClose={() => setScanOpen(false)} />
     </div>
   )
 }

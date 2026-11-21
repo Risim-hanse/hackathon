@@ -47,7 +47,15 @@ function statusTone(status: DoseInstance['status']): 'success' | 'major' | 'mode
   return 'info'
 }
 
-export function TodayView({ api, setTab }: { api: AppStateApi; setTab: (tab: Tab) => void }) {
+export function TodayView({
+  api,
+  setTab,
+  onScan,
+}: {
+  api: AppStateApi
+  setTab: (tab: Tab) => void
+  onScan: () => void
+}) {
   const { mode, state, now, doses, report, adherence, refills, snoozes, logDose, undo, snooze } = api
   const [skipFor, setSkipFor] = useState<string | null>(null)
   const [reason, setReason] = useState<SkipReason>('felt_fine')
@@ -66,6 +74,28 @@ export function TodayView({ api, setTab }: { api: AppStateApi; setTab: (tab: Tab
   const skip = (dose: DoseInstance) => {
     logDose(dose, 'skipped', reason)
     setSkipFor(null)
+  }
+
+  if (state.medications.length === 0) {
+    return (
+      <Card className="mx-auto max-w-xl text-center">
+        <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[var(--accent-soft)]" style={{ color: 'var(--accent)' }}>
+          <Pill size={32} />
+        </span>
+        <h1 className="mt-5 text-3xl font-black">No medicines yet</h1>
+        <p className="muted mt-2 text-lg">
+          Scan a prescription or add a medicine to start your daily safety check.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Button onClick={onScan}>
+            <AlarmClock size={18} /> Scan prescription
+          </Button>
+          <Button variant="secondary" onClick={() => setTab('meds')}>
+            <Pill size={18} /> Add a medicine
+          </Button>
+        </div>
+      </Card>
+    )
   }
 
   if (mode === 'caregiver') {
@@ -185,7 +215,7 @@ export function TodayView({ api, setTab }: { api: AppStateApi; setTab: (tab: Tab
       <div>
         <p className="muted text-base font-semibold">{longDate(now)}</p>
         <h1 className="mt-1 text-4xl font-black">
-          {greeting(now)}, {state.profile.name.split(' ')[0]}
+          {greeting(now)}, {state.profile.name ? state.profile.name.split(' ')[0] : 'there'}
         </h1>
         <p className="muted mt-2 text-lg">Here is what is happening with your medicines today.</p>
       </div>

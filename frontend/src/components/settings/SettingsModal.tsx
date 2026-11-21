@@ -11,7 +11,7 @@ export function SettingsModal({
   open: boolean
   onClose: () => void
 }) {
-  const { state, setPreference, setCaregiver, resetAll } = api
+  const { state, setPreference, setCaregiver, resetAll, replayOnboarding } = api
   const preferences = state.profile.preferences
 
   const exportJson = () => {
@@ -90,6 +90,9 @@ export function SettingsModal({
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={exportJson}>
               <Download size={18} /> Export JSON
+            </Button>
+            <Button variant="secondary" onClick={() => { replayOnboarding(); onClose() }}>
+              <RotateCcw size={18} /> Replay welcome
             </Button>
             <Button variant="secondary" onClick={() => { resetAll(); onClose() }}>
               <RotateCcw size={18} /> Reload demo

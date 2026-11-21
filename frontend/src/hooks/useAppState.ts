@@ -8,7 +8,7 @@ import type {
   Prescription,
   SkipReason,
 } from '../shared/contracts'
-import { createDemoState } from '../data/demoProfile'
+import { createDemoState, createEmptyState } from '../data/demoProfile'
 import {
   analyzeRegimen,
   daysOfStockLeft,
@@ -21,7 +21,17 @@ import { clearState, loadState, saveState } from '../storage/localStore'
 export type Mode = 'elderly' | 'caregiver'
 
 function initialState(): AppState {
-  return loadState() ?? createDemoState()
+  const loaded = loadState()
+  if (!loaded) return createEmptyState()
+  // Stored state from before onboarding existed but already has data: don't
+  // show the welcome flow again.
+  if (
+    !loaded.onboardingCompleted &&
+    (loaded.medications.length > 0 || loaded.events.length > 0)
+  ) {
+    return { ...loaded, onboardingCompleted: true }
+  }
+  return loaded
 }
 
 export function useAppState() {
@@ -137,6 +147,7 @@ export function useAppState() {
       const exists = current.medications.some((item) => item.id === medication.id)
       return {
         ...current,
+        isDemo: false,
         medications: exists
           ? current.medications.map((item) => (item.id === medication.id ? medication : item))
           : [...current.medications, medication],
@@ -148,6 +159,7 @@ export function useAppState() {
   const addPrescription = useCallback((prescription: Prescription, medications: Medication[]) => {
     setState((current) => ({
       ...current,
+      isDemo: false,
       prescriptions: [prescription, ...current.prescriptions],
       medications: [
         ...current.medications,
@@ -204,6 +216,14 @@ export function useAppState() {
     setToast({ message: 'Reset to the demo profile.' })
   }, [])
 
+  const completeOnboarding = useCallback(() => {
+    setState((current) => ({ ...current, onboardingCompleted: true }))
+  }, [])
+
+  const replayOnboarding = useCallback(() => {
+    setState((current) => ({ ...current, onboardingCompleted: false }))
+  }, [])
+
   const emptyState = state.medications.length === 0 && state.events.length === 0
 
   return {
@@ -236,6 +256,8 @@ export function useAppState() {
     setCaregiver,
     loadDemo,
     resetAll,
+    completeOnboarding,
+    replayOnboarding,
   }
 }
 

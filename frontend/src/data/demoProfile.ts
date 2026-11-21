@@ -176,6 +176,35 @@ export function createDemoState(now = new Date()): AppState {
     medications: demoMedications,
     prescriptions: [],
     events: createDemoEvents(now),
+    isDemo: true,
+    onboardingCompleted: true,
+    version: STORAGE_VERSION,
+    updatedAt: now.toISOString(),
+  }
+}
+
+/** A clean first-run state: no sample medicines, no history. */
+export function createEmptyState(now = new Date()): AppState {
+  return {
+    profile: {
+      id: 'local-user',
+      name: '',
+      caregiverName: '',
+      caregiverPhone: '',
+      pharmacistPhone: '',
+      preferences: {
+        largeText: false,
+        highContrast: false,
+        lateGraceMinutes: 120,
+        missedGraceMinutes: 240,
+        notificationsEnabled: false,
+      },
+    },
+    medications: [],
+    prescriptions: [],
+    events: [],
+    isDemo: false,
+    onboardingCompleted: false,
     version: STORAGE_VERSION,
     updatedAt: now.toISOString(),
   }

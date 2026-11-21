@@ -58,7 +58,7 @@ SafetyFinding {
 SafetyReport { score: 0-100, band: 'safe'|'review'|'high_risk', findings, checkedAt }
 AdherenceSummary { totalDoses, taken, late, skipped, missed, adherencePercent, streakDays, mostMissedSlot? }
 Profile { id, name, age?, caregiverName?, caregiverPhone?, pharmacistPhone?, preferences }
-AppState { profile, medications, prescriptions, events, version, updatedAt }
+AppState { profile, medications, prescriptions, events, isDemo?, onboardingCompleted?, version, updatedAt }
 ScannedPrescription { issuedDate?, documentDate?, prescriberName?, pharmacyName?, ... confidence?, ocrText?, kind? }
 ScannedMedication { brandName, genericName?, strength?, doseAmount?, times?, scheduleType?, ... }
 ScanResponse { prescription, medications, warnings, model, sha256 }
@@ -155,6 +155,8 @@ Semantics:
 ## Conventions
 
 - Storage version is `2`. v1 states are migrated on load by adding `prescriptions: []`.
+- First run uses `createEmptyState()` and shows onboarding; `onboardingCompleted` is set once a
+  path is chosen. `isDemo` is true only for the seeded sample profile and clears on user edits.
 - Document images live in IndexedDB via `storage/imageStore.ts`; only `imageRef` and a
   small `thumbnailDataUrl` are stored in `AppState`.
 - `issuedDate` = date written on the prescription; `documentDate` = printed document/bill

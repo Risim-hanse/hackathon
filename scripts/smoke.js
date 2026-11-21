@@ -149,7 +149,13 @@ async function main() {
     mobile: true,
   })
   await Promise.race([load, new Promise((resolve) => setTimeout(resolve, 8000))])
-  await new Promise((resolve) => setTimeout(resolve, 1500))
+  await new Promise((resolve) => setTimeout(resolve, 1200))
+
+  // First run shows onboarding; enter the sample plan for the smoke checks.
+  await send('Runtime.evaluate', {
+    expression: `document.querySelector('[data-testid="onboarding-demo"]')?.click()`,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 900))
 
   const getState = async (expression) =>
     JSON.parse((await send('Runtime.evaluate', { expression, returnByValue: true })).result.result.value)

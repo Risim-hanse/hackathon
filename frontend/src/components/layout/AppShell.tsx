@@ -37,7 +37,7 @@ export function AppShell({
   onSettings: () => void
   children: ReactNode
 }) {
-  const { mode, setMode, state, setPreference, resetAll, loadDemo } = api
+  const { mode, setMode, state, setPreference, resetAll } = api
 
   return (
     <div className="min-h-screen">
@@ -60,7 +60,7 @@ export function AppShell({
                 {state.profile.name} · {state.profile.caregiverName || 'No caregiver set'}
               </p>
             </div>
-            <Badge className="hidden sm:inline-flex">Demo</Badge>
+            {state.isDemo && <Badge className="hidden sm:inline-flex">Sample data</Badge>}
           </div>
 
           <Segmented<Mode>
@@ -131,19 +131,7 @@ export function AppShell({
       </header>
 
       <main id="main" className="mx-auto max-w-6xl px-4 py-6">
-        {api.emptyState ? (
-          <div className="card mx-auto max-w-lg text-center">
-            <p className="text-2xl font-black">Start with Meera's demo</p>
-            <p className="muted mt-2">
-              A fictional 68-year-old with five medicines. Everything works offline.
-            </p>
-            <Button className="mt-5" onClick={loadDemo}>
-              Load demo
-            </Button>
-          </div>
-        ) : (
-          <div className="animate-in">{children}</div>
-        )}
+        <div className="animate-in">{children}</div>
       </main>
 
       <footer className="no-print mx-auto max-w-6xl px-4 pb-10 pt-2">

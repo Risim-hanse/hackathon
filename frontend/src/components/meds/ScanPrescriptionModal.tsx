@@ -106,10 +106,12 @@ export function ScanPrescriptionModal({
   api,
   open,
   onClose,
+  onSaved,
 }: {
   api: AppStateApi
   open: boolean
   onClose: () => void
+  onSaved?: () => void
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -256,6 +258,7 @@ export function ScanPrescriptionModal({
       api.addPrescription(prescription, selected)
       reset()
       onClose()
+      onSaved?.()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save the image locally.')
     } finally {

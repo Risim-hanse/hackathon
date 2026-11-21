@@ -265,6 +265,10 @@ export interface AppState {
   medications: Medication[]
   /** Scanned prescriptions and their provenance (new in v2). */
   prescriptions: Prescription[]
+  /** True when the current plan is the seeded sample profile. */
+  isDemo?: boolean
+  /** False on first run; the welcome flow sets it once a path is chosen. */
+  onboardingCompleted?: boolean
   events: DoseEvent[]
   version: number
   updatedAt: string
