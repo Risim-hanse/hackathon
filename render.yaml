@@ -24,7 +24,7 @@ services:
   - type: web
     name: meditrack-api
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
     envVars:
