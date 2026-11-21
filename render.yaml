@@ -24,8 +24,8 @@ services:
   - type: web
     name: meditrack-api
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: ./backend
+    # Build context is the repo root; the Dockerfile COPYs from backend/.
+    dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /api/health
     envVars:
       - key: CORS_ORIGINS
