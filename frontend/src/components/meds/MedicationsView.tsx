@@ -4,10 +4,15 @@ import {
   CalendarClock,
   Camera,
   FileText,
+  Image as ImageIcon,
+  LayoutGrid,
+  Link2,
+  List,
   Pencil,
   Pill,
   Plus,
   ScanLine,
+  Search,
   Square,
   Stethoscope,
   Utensils,
@@ -15,7 +20,8 @@ import {
 import type { FoodRelation, Medication, MedicationForm as MedFormType, ScheduleType } from '../../shared/contracts'
 import { resolveBrand } from '../../engine'
 import { getImageUrl } from '../../storage/imageStore'
-import { Badge, Button, Card, Meter, Modal } from '../primitives/Ui'
+import { Badge, Button, Card, Meter, Modal, Segmented } from '../primitives/Ui'
+import type { Prescription } from '../../shared/contracts'
 import { FOOD_LABEL, daysLeftLabel } from '../../utils/format'
 import type { AppStateApi } from '../../hooks/useAppState'
 
@@ -57,6 +63,69 @@ function formFrom(medication: Medication) {
   }
 }
 
+type SourceView = 'all' | 'source'
+
+function sourceFor(medication: Medication, prescriptions: Prescription[]): Prescription | null {
+  if (!medication.prescriptionId) return null
+  return prescriptions.find((item) => item.id === medication.prescriptionId) ?? null
+}
+
+function SourceThumb({ prescription, size = 'sm' }: { prescription: Prescription | null; size?: 'sm' | 'md' }) {
+  const dimension = size === 'md' ? 'h-14 w-14' : 'h-10 w-10'
+  if (!prescription?.source.thumbnailDataUrl) {
+    return (
+      <span className={`grid ${dimension} shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)]`}>
+        {prescription ? <FileText size={20} className="muted" /> : <Pill size={20} className="muted" />}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={prescription.source.thumbnailDataUrl}
+      alt={prescription.source.fileName}
+      className={`${dimension} shrink-0 rounded-xl border border-[var(--border)] object-cover`}
+    />
+  )
+}
+
+function SourceRibbon({
+  prescription,
+  compact = false,
+}: {
+  prescription: Prescription | null
+  compact?: boolean
+}) {
+  if (!prescription) {
+    return (
+      <span className="flex items-center gap-2 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-sm">
+        <Link2 size={16} className="muted" />
+        <span className="muted font-semibold">Added manually</span>
+      </span>
+    )
+  }
+  const sourceLabel = prescription.prescriberName || prescription.pharmacyName || 'Scanned document'
+  const date = prescription.issuedDate || prescription.documentDate
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl bg-[var(--accent-soft)] px-3 py-2 text-sm">
+      <SourceThumb prescription={prescription} />
+      <span className="min-w-0">
+        <span className="flex items-center gap-1 font-bold capitalize" style={{ color: 'var(--accent)' }}>
+          <FileText size={14} /> {prescription.source.kind.replace('_', ' ')}
+          {date ? ` · ${date}` : ''}
+        </span>
+        {!compact && (
+          <span className="muted block truncate text-xs">
+            {sourceLabel}
+            {prescription.pharmacyName && prescription.prescriberName
+              ? ` · ${prescription.pharmacyName}`
+              : ''}
+          </span>
+        )}
+      </span>
+    </span>
+  )
+}
+
 export function MedicationsView({
   api,
   onScan,
@@ -69,6 +138,8 @@ export function MedicationsView({
   const { state, saveMedication, stopMedication, refills, prescriptions, mode, archivePrescription } = api
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(blankForm)
+  const [view, setView] = useState<SourceView>('all')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (addIntent > 0) {
@@ -137,6 +208,109 @@ export function MedicationsView({
     setOpen(false)
   }
 
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleMedications = state.medications.filter((medication) =>
+    !normalizedQuery
+      ? true
+      : `${medication.brandName} ${medication.genericName} ${medication.strength} ${medication.reason ?? ''}`
+          .toLowerCase()
+          .includes(normalizedQuery),
+  )
+
+  const sourceGroups = prescriptions
+    .map((prescription) => ({
+      id: prescription.id,
+      prescription,
+      medications: visibleMedications.filter(
+        (medication) => medication.prescriptionId === prescription.id,
+      ),
+    }))
+    .filter((group) => group.medications.length > 0)
+
+  const manualMedications = visibleMedications.filter(
+    (medication) =>
+      !medication.prescriptionId ||
+      !prescriptions.some((item) => item.id === medication.prescriptionId),
+  )
+  if (manualMedications.length > 0) {
+    sourceGroups.push({ id: 'manual', prescription: null, medications: manualMedications })
+  }
+
+  const openImage = async (prescription: Prescription) => {
+    const url = await getImageUrl(prescription.source.imageRef)
+    if (url) window.open(url, '_blank', 'noopener')
+  }
+
+  const renderMedicationCard = (medication: Medication) => {
+    const days = refills.find((entry) => entry.medication.id === medication.id)?.daysLeft ?? null
+    const threshold = medication.inventory?.refillThresholdDays ?? 5
+    const prescription = sourceFor(medication, prescriptions)
+
+    return (
+      <Card key={medication.id} className="flex flex-col gap-4">
+        <SourceRibbon prescription={prescription} compact={mode === 'elderly'} />
+        <div className="flex items-start gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)]" style={{ color: 'var(--accent)' }}>
+            <Pill size={26} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-xl font-black">{medication.brandName}</h2>
+              <Badge tone="info">{medication.strength}</Badge>
+            </div>
+            <p className="muted text-sm">{medication.genericName} · {medication.form}</p>
+            {medication.directionsRaw && (
+              <p className="muted mt-1 text-xs">“{medication.directionsRaw}”</p>
+            )}
+          </div>
+          {medication.status !== 'active' && <Badge tone="moderate">Stopped</Badge>}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {medication.schedule.times.map((time) => (
+            <span key={time} className="chip"><CalendarClock size={15} /> {time}</span>
+          ))}
+          {medication.schedule.type === 'everyHours' && (
+            <span className="chip">Every {medication.schedule.intervalHours}h</span>
+          )}
+          {medication.schedule.type === 'asNeeded' && <span className="chip">As needed</span>}
+          <span className="chip"><Utensils size={15} /> {FOOD_LABEL[medication.foodRelation]}</span>
+          {medication.confidence !== undefined && (
+            <Badge tone={medication.confidence < 0.6 ? 'moderate' : 'neutral'}>
+              {Math.round(medication.confidence * 100)}% extracted
+            </Badge>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between text-sm font-bold">
+            <span className="muted">Stock</span>
+            <span style={{ color: days !== null && days <= threshold ? 'var(--warn)' : undefined }}>
+              {daysLeftLabel(days)}
+            </span>
+          </div>
+          <Meter value={Math.max(days ?? 0, 0)} max={Math.max(threshold * 3, 1)} tone={days !== null && days <= threshold ? 'var(--warn)' : 'var(--accent)'} />
+        </div>
+
+        <div className="mt-auto flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" onClick={() => openEdit(medication)}>
+            <Pencil size={16} /> Edit
+          </Button>
+          {prescription && (
+            <Button variant="ghost" size="sm" onClick={() => openImage(prescription)}>
+              <ImageIcon size={16} /> Source
+            </Button>
+          )}
+          {medication.status === 'active' ? (
+            <Button variant="ghost" size="sm" onClick={() => stopMedication(medication.id)}>
+              <Square size={15} /> Stop
+            </Button>
+          ) : null}
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -153,6 +327,29 @@ export function MedicationsView({
             <Plus size={20} /> Add medicine
           </Button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+        <label className="relative min-w-[12rem] flex-1">
+          <Search size={18} className="muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            className="input pl-10"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search medicines…"
+          />
+        </label>
+        <Segmented<SourceView>
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'all', label: 'All', icon: <LayoutGrid size={16} /> },
+            { value: 'source', label: 'By source', icon: <List size={16} /> },
+          ]}
+        />
+        <Badge tone="neutral">
+          {visibleMedications.length} of {state.medications.length}
+        </Badge>
       </div>
 
       <Card>
@@ -242,10 +439,7 @@ export function MedicationsView({
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={async () => {
-                        const url = await getImageUrl(prescription.source.imageRef)
-                        if (url) window.open(url, '_blank', 'noopener')
-                      }}
+                      onClick={() => openImage(prescription)}
                     >
                       <Camera size={16} /> View image
                     </Button>
@@ -262,61 +456,65 @@ export function MedicationsView({
         )}
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {state.medications.map((medication) => {
-          const days = refills.find((entry) => entry.medication.id === medication.id)?.daysLeft ?? null
-          const threshold = medication.inventory?.refillThresholdDays ?? 5
-          return (
-            <Card key={medication.id} className="flex flex-col gap-4">
-              <div className="flex items-start gap-3">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)]" style={{ color: 'var(--accent)' }}>
-                  <Pill size={26} />
-                </span>
+      {view === 'all' ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {visibleMedications.map(renderMedicationCard)}
+          {visibleMedications.length === 0 && (
+            <p className="muted col-span-full rounded-2xl bg-[var(--surface-2)] p-4 text-center">
+              No medicines match “{query}”.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {sourceGroups.map((group) => (
+            <section key={group.id} className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <SourceThumb prescription={group.prescription} size="md" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-xl font-black">{medication.brandName}</h2>
-                    <Badge tone="info">{medication.strength}</Badge>
-                  </div>
-                  <p className="muted text-sm">{medication.genericName} · {medication.form}</p>
+                  <p className="font-black capitalize">
+                    {group.prescription ? group.prescription.source.kind.replace('_', ' ') : 'Added manually'}
+                  </p>
+                  <p className="muted text-sm">
+                    {group.prescription
+                      ? [
+                          group.prescription.prescriberName,
+                          group.prescription.issuedDate,
+                          group.prescription.pharmacyName,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : 'Medicines entered without a scanned document'}
+                  </p>
+                  {group.prescription && mode === 'caregiver' && (
+                    <p className="muted mt-1 text-xs">
+                      Bill {group.prescription.billNumber || '—'} · Scanned{' '}
+                      {new Date(group.prescription.source.scannedAt).toLocaleDateString()} · SHA-256{' '}
+                      {group.prescription.source.sha256.slice(0, 12)}…
+                    </p>
+                  )}
                 </div>
-                {medication.status !== 'active' && <Badge tone="moderate">Stopped</Badge>}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {medication.schedule.times.map((time) => (
-                  <span key={time} className="chip"><CalendarClock size={15} /> {time}</span>
-                ))}
-                {medication.schedule.type === 'everyHours' && (
-                  <span className="chip">Every {medication.schedule.intervalHours}h</span>
-                )}
-                {medication.schedule.type === 'asNeeded' && <span className="chip">As needed</span>}
-                <span className="chip"><Utensils size={15} /> {FOOD_LABEL[medication.foodRelation]}</span>
-              </div>
-
-              <div>
-                <div className="mb-1 flex items-center justify-between text-sm font-bold">
-                  <span className="muted">Stock</span>
-                  <span style={{ color: days !== null && days <= threshold ? 'var(--warn)' : undefined }}>
-                    {daysLeftLabel(days)}
-                  </span>
-                </div>
-                <Meter value={Math.max(days ?? 0, 0)} max={Math.max(threshold * 3, 1)} tone={days !== null && days <= threshold ? 'var(--warn)' : 'var(--accent)'} />
-              </div>
-
-              <div className="mt-auto flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" onClick={() => openEdit(medication)}>
-                  <Pencil size={16} /> Edit
-                </Button>
-                {medication.status === 'active' ? (
-                  <Button variant="ghost" size="sm" onClick={() => stopMedication(medication.id)}>
-                    <Square size={15} /> Stop
+                <Badge tone="info">
+                  {group.medications.length} medicine{group.medications.length === 1 ? '' : 's'}
+                </Badge>
+                {group.prescription && (
+                  <Button size="sm" variant="secondary" onClick={() => openImage(group.prescription!)}>
+                    <ImageIcon size={16} /> View source
                   </Button>
-                ) : null}
+                )}
               </div>
-            </Card>
-          )
-        })}
-      </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {group.medications.map(renderMedicationCard)}
+              </div>
+            </section>
+          ))}
+          {sourceGroups.length === 0 && (
+            <p className="muted rounded-2xl bg-[var(--surface-2)] p-4 text-center">
+              No medicines match “{query}”.
+            </p>
+          )}
+        </div>
+      )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={form.id ? 'Edit medicine' : 'Add medicine'} wide>
         <div className="grid gap-4 sm:grid-cols-2">
